@@ -3,7 +3,7 @@
 - Número da Lista: 8
 - Conteúdo da Disciplina: Greedy
 
-LINK DO VÍDEO DE APRESENTAÇÃO:
+LINK DO VÍDEO DE APRESENTAÇÃO: https://www.youtube.com/watch?v=aKXLFusurYk
 
 ## Alunos
 | Matricula | Aluno |

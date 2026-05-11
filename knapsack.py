@@ -1,4 +1,4 @@
-def knapsack_01_acoes(acoes, mana_disponivel, vida_alvo=None):
+def knapsack_01_acoes(acoes, mana_disponivel):
     n = len(acoes)
     dp = [[0 for _ in range(mana_disponivel + 1)] for _ in range(n + 1)]
 
@@ -12,9 +12,6 @@ def knapsack_01_acoes(acoes, mana_disponivel, vida_alvo=None):
                 nao_usar = dp[i - 1][mana]
                 usar = acao.dano + dp[i - 1][mana - acao.custo_mana]
                 dp[i][mana] = max(nao_usar, usar)
-
-            if vida_alvo is not None:
-                dp[i][mana] = min(dp[i][mana], vida_alvo)
 
     melhor_dano = max(dp[n])
     melhor_mana = next(mana for mana, dano in enumerate(dp[n]) if dano == melhor_dano)
@@ -30,4 +27,4 @@ def knapsack_01_acoes(acoes, mana_disponivel, vida_alvo=None):
     escolhidas.reverse()
     mana_total = sum(acao.custo_mana for acao in escolhidas)
 
-    return escolhidas, melhor_dano, mana_total, dp
+    return escolhidas, melhor_dano, mana_total

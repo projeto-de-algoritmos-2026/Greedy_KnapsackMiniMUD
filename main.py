@@ -82,7 +82,7 @@ def criar_acoes_da_rodada(seed=None):
     for _ in range(300):
         catalogo = criar_catalogo_variado(gerador)
         acoes_visiveis = gerador.sample(catalogo, QUANTIDADE_GOLPES_VISIVEIS)
-        escolhidas, dano_total, _, _ = knapsack_01_acoes(acoes_visiveis, MANA_DISPONIVEL)
+        escolhidas, dano_total, _ = knapsack_01_acoes(acoes_visiveis, MANA_DISPONIVEL)
 
         if dano_total >= VIDA_SEPHIROTH and len(escolhidas) > 1:
             return catalogo, acoes_visiveis
@@ -187,7 +187,7 @@ def exibir_barras_analise():
 
 def obter_execucao(estado):
     if estado["execucao"] is None:
-        escolhidas, dano_total, mana_total, dp = knapsack_01_acoes(
+        escolhidas, dano_total, mana_total = knapsack_01_acoes(
             estado["acoes_disponiveis"],
             MANA_DISPONIVEL,
         )
@@ -196,7 +196,6 @@ def obter_execucao(estado):
             "dano_total": dano_total,
             "dano_bruto": sum(acao.dano for acao in escolhidas),
             "mana_total": mana_total,
-            "dp": dp,
         }
 
     return estado["execucao"]

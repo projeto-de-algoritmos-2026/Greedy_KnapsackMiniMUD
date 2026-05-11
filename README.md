@@ -39,5 +39,3 @@ cd C:\diretório-do-projeto
 ```bash
 python main.py
 ```
-
-## Uso

@@ -2,7 +2,8 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class Item:
+class Acao:
     nome: str
-    peso: int
-    valor: int
+    custo_mana: int
+    dano: int
+    descricao: str

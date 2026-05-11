@@ -1,55 +1,47 @@
 import os
 import random
 
-from item import Item
-from knapsack import knapsack_01
+from acao import Acao
+from knapsack import knapsack_01_acoes
 
 
-CAPACIDADE_TOTAL = 15
-LARGURA_TELA = 76
+MANA_DISPONIVEL = 18
+LARGURA = 78
+VIDA_CLOUD = 9
+VIDA_MAX_CLOUD = 100
+MANA_CLOUD = 18
+MANA_MAX_CLOUD = 30
+VIDA_SEPHIROTH = 21
+VIDA_MAX_SEPHIROTH = 100
+MANA_SEPHIROTH = 6
+MANA_MAX_SEPHIROTH = 50
+QUANTIDADE_GOLPES_VISIVEIS = 5
 
-CATALOGO_MOCHILA = [
-    Item("Mapa Rasgado", 2, 1),
-    Item("Tocha Gasta", 1, 1),
-    Item("Racao de Viagem", 3, 3),
-    Item("Corda Curta", 2, 2),
-    Item("Livro Umido", 3, 4),
-    Item("Adaga Enferrujada", 2, 3),
-    Item("Cantimplora", 1, 2),
-    Item("Pedra Runica Apagada", 4, 5),
+GOLPES_BASE = [
+    ("Ataque com Espada", 4, 5, "Corte básico para abrir a guarda inimiga."),
+    ("Braver", 8, 10, "Golpe pesado e direto com grande impacto."),
+    ("Blade Beam", 9, 11, "Uma onda de energia lançada pela lâmina."),
+    ("Cross Slash", 12, 14, "Sequência de cortes cruzados em alta pressão."),
+    ("Climhazzard", 14, 16, "Investida ascendente com dano concentrado."),
+    ("Finishing Touch", 16, 18, "Golpe amplo para encerrar a abertura."),
+    ("Meteorain", 18, 20, "Sequência intensa de impactos sucessivos."),
+    ("Omnislash", 21, 21, "Sequência máxima, poderosa, mas cara em mana."),
+    ("Sonic Break", 7, 8, "Corte veloz para encaixar dano com pouca mana."),
+    ("Blade Burst", 10, 12, "Explosão curta de energia concentrada na lâmina."),
 ]
 
-CATALOGO_BAU = [
-    Item("Espada Antiga", 4, 10),
-    Item("Pocao Rara", 2, 6),
-    Item("Armadura Pesada", 7, 14),
-    Item("Anel Mistico", 1, 5),
-    Item("Machado Sombrio", 5, 12),
-    Item("Elmo de Ferro", 3, 7),
-    Item("Gema Carmesim", 2, 9),
-    Item("Cajado de Osso", 4, 11),
-    Item("Luvas do Ladino", 1, 4),
-    Item("Escudo Lunar", 6, 13),
-    Item("Pergaminho Arcano", 2, 8),
-    Item("Botas Silenciosas", 3, 6),
-]
+
+def linha(char="="):
+    return char * LARGURA
 
 
 def limpar_tela():
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def pausar():
-    input("\n>> Pressione Enter para continuar...")
-
-
-def linha(char="="):
-    return char * LARGURA_TELA
-
-
 def titulo(texto, subtitulo=None):
     print(linha("="))
-    print(f"|| {texto.center(LARGURA_TELA - 6)} ||")
+    print(f"|| {texto.center(LARGURA - 6)} ||")
     print(linha("="))
     if subtitulo:
         print(f">> {subtitulo}")
@@ -57,306 +49,258 @@ def titulo(texto, subtitulo=None):
 
 
 def caixa(texto):
-    print("+" + "-" * (LARGURA_TELA - 2) + "+")
-    for linha_texto in texto.splitlines():
-        print("| " + linha_texto[: LARGURA_TELA - 4].ljust(LARGURA_TELA - 4) + " |")
-    print("+" + "-" * (LARGURA_TELA - 2) + "+")
+    print("+" + "-" * (LARGURA - 2) + "+")
+    for trecho in texto.splitlines():
+        print("| " + trecho[: LARGURA - 4].ljust(LARGURA - 4) + " |")
+    print("+" + "-" * (LARGURA - 2) + "+")
 
 
-def barra_capacidade(usado, total, largura=24):
-    preenchido = round((usado / total) * largura) if total else 0
+def barra_status(atual, maximo, largura=18):
+    preenchido = round((atual / maximo) * largura) if maximo else 0
     preenchido = min(preenchido, largura)
-    vazio = largura - preenchido
-    return f"[{'#' * preenchido}{'.' * vazio}] {usado}/{total}"
+    return "[" + "#" * preenchido + "." * (largura - preenchido) + f"] {atual}/{maximo}"
 
 
-def desenhar_mapa(restante):
-    print(r"             /\                         __________________")
-    print(r"            /  \       HER0I           /                  \ ")
-    print(r"           /____\       @             /   BAU DA CRIPTA    \ ")
-    print(r"          /|    |\     /|\           /______________________\ ")
-    print(r"         /_|____|_\    / \             | [] [] [] [] [] |")
-    print(r"            ||                         |________________|")
-    print(r"     MOCHILA PARCIALMENTE CHEIA")
-    print(f"     espaco restante: {restante}")
+def pausar():
+    input("\n>> Pressione Enter para continuar...")
 
 
-def capacidade_restante(mochila):
-    return CAPACIDADE_TOTAL - sum(item.peso for item in mochila)
+def criar_catalogo_variado(gerador):
+    catalogo = []
+
+    for nome, mana_base, dano_base, descricao in GOLPES_BASE:
+        custo_mana = max(4, min(24, mana_base + gerador.randint(-2, 2)))
+        dano = max(4, min(26, dano_base + gerador.randint(-2, 4)))
+        catalogo.append(Acao(nome, custo_mana, dano, descricao))
+
+    return catalogo
 
 
-def criar_estado_inicial(seed=None):
+def criar_acoes_da_rodada(seed=None):
     gerador = random.Random(seed)
-    catalogo_mochila = list(CATALOGO_MOCHILA)
-    catalogo_bau = list(CATALOGO_BAU)
-    gerador.shuffle(catalogo_mochila)
-    gerador.shuffle(catalogo_bau)
 
-    mochila = []
-    peso_alvo = gerador.randint(5, 8)
+    for _ in range(300):
+        catalogo = criar_catalogo_variado(gerador)
+        acoes_visiveis = gerador.sample(catalogo, QUANTIDADE_GOLPES_VISIVEIS)
+        escolhidas, dano_total, _, _ = knapsack_01_acoes(acoes_visiveis, MANA_DISPONIVEL)
 
-    for item in catalogo_mochila:
-        if sum(i.peso for i in mochila) + item.peso <= peso_alvo:
-            mochila.append(item)
-        if sum(i.peso for i in mochila) >= peso_alvo:
-            break
+        if dano_total >= VIDA_SEPHIROTH and len(escolhidas) > 1:
+            return catalogo, acoes_visiveis
 
-    if not mochila:
-        mochila.append(catalogo_mochila[0])
-
-    quantidade_bau = gerador.randint(5, 7)
-    itens_bau = catalogo_bau[:quantidade_bau]
-
-    return mochila, itens_bau
+    catalogo = [
+        Acao("Ataque com Espada", 4, 5, "Corte básico para abrir a guarda inimiga."),
+        Acao("Braver", 8, 10, "Golpe pesado e direto com grande impacto."),
+        Acao("Blade Beam", 9, 11, "Uma onda de energia lançada pela lâmina."),
+        Acao("Cross Slash", 12, 14, "Sequência de cortes cruzados em alta pressão."),
+        Acao("Climhazzard", 14, 16, "Investida ascendente com dano concentrado."),
+        Acao("Finishing Touch", 16, 18, "Golpe amplo para encerrar a abertura."),
+        Acao("Meteorain", 18, 20, "Sequência intensa de impactos sucessivos."),
+        Acao("Omnislash", 24, 21, "Sequência máxima, poderosa, mas cara em mana."),
+        Acao("Sonic Break", 7, 8, "Corte veloz para encaixar dano com pouca mana."),
+        Acao("Blade Burst", 10, 12, "Explosão curta de energia concentrada na lâmina."),
+    ]
+    return catalogo, [catalogo[1], catalogo[2], catalogo[3], catalogo[8], catalogo[9]]
 
 
 def exibir_introducao():
     limpar_tela()
-    titulo("KNAPSACK MUD", "O Bau do Guardiao da Cripta")
+    titulo("KNAPSACK COMBAT MUD", "Turno crítico: Cloud vs Sephiroth")
+    print(r"                         .       .")
+    print(r"            CLOUD       /|\     /|\       SEPHIROTH")
+    print(r"              @        /_|_\   /_|_\          |")
+    print(r"             /|\         |       |           /|\ ")
+    print(r"             / \        / \     / \          / \ ")
+    print(r"        ____________________________________________________")
+    print(r"       /___________________________________________________/|")
+    print(r"      |___________________________________________________| |")
+    print(r"      |___________________________________________________|/")
+    print()
     caixa(
-        "Você derrotou o Guardião da Cripta. No silêncio da sala final,\n"
-        "um baú antigo se abre com armas, reliquias e tesouros. Sua mochila\n"
-        "ja esta parcialmente cheia, entao sera preciso escolher com cuidado."
+        "Cloud segura a espada com as duas mãos.\n"
+        "Sephiroth avança sem pressa, obrigando cada decisão a ter peso.\n\n"
+        "Cloud está com pouca vida, mas ainda possui 18 pontos de mana.\n"
+        "Sephiroth tem apenas 21 pontos de vida restantes."
     )
+    exibir_barras_de_status()
+    pausar()
+
+
+def exibir_barras_de_status():
+    print("\nBarras de status")
+    print("+------------+-----------------------------------------------------------+")
+    print(f"| Cloud      | Vida {barra_status(VIDA_CLOUD, VIDA_MAX_CLOUD):<49}|")
+    print(f"|            | Mana {barra_status(MANA_CLOUD, MANA_MAX_CLOUD):<49}|")
+    print("+------------+-----------------------------------------------------------+")
+    print(f"| Sephiroth  | Vida {barra_status(VIDA_SEPHIROTH, VIDA_MAX_SEPHIROTH):<49}|")
+    print(f"|            | Mana {barra_status(MANA_SEPHIROTH, MANA_MAX_SEPHIROTH):<49}|")
+    print("+------------+-----------------------------------------------------------+")
+
+
+def exibir_acoes(acoes_disponiveis):
+    limpar_tela()
+    titulo("HABILIDADES OFENSIVAS", "5 golpes sorteados do catálogo desta rodada")
+    print("+----+------------------------+------------+-------+")
+    print("| #  | Habilidade             | Mana       | Dano  |")
+    print("+----+------------------------+------------+-------+")
+    for indice, acao in enumerate(acoes_disponiveis, start=1):
+        print(f"| {indice:<2} | {acao.nome[:22]:<22} | {acao.custo_mana:^10} | {acao.dano:^5} |")
+    print("+----+------------------------+------------+-------+")
+    print("\nOs valores variam a cada execução. Cada habilidade só pode ser usada uma vez.")
+    pausar()
+
+
+def exibir_tabela_acoes(titulo_tabela, acoes):
+    print(f"\n{titulo_tabela}")
+    print("+----+--------------------------+--------+------+")
+    print("| #  | Habilidade               | Mana   | Dano |")
+    print("+----+--------------------------+--------+------+")
+    for indice, acao in enumerate(acoes, start=1):
+        print(f"| {indice:<2} | {acao.nome[:24]:<24} | {acao.custo_mana:^6} | {acao.dano:^4} |")
+    print("+----+--------------------------+--------+------+")
+
+
+def exibir_resumo_analise(mana_total, dano_bruto):
+    print("\nResumo")
+    print("+-------------------+---------+")
+    print("| Mana total usada  | " + f"{mana_total} / {MANA_DISPONIVEL}".ljust(7) + " |")
+    print("| Dano bruto causado| " + str(dano_bruto).ljust(7) + " |")
+    print("+-------------------+---------+")
+
+
+def exibir_objetivo_analise():
+    print("OBJETIVO")
+    caixa(
+        "Causar o maior dano bruto possível com as habilidades disponíveis,\n"
+        "sem ultrapassar a mana atual do Cloud.\n"
+        "Se houver empate de dano, a análise prefere a opção que gasta menos mana."
+    )
+
+
+def exibir_barras_analise():
+    print("\nRecursos analisados")
+    print("+------------------------------+------------------------------+")
+    print("| Mana do Cloud                | Vida de Sephiroth            |")
+    print("+------------------------------+------------------------------+")
+    print(f"| {barra_status(MANA_CLOUD, MANA_MAX_CLOUD):<28} | {barra_status(VIDA_SEPHIROTH, VIDA_MAX_SEPHIROTH):<28} |")
+    print("+------------------------------+------------------------------+")
+
+
+def obter_execucao(estado):
+    if estado["execucao"] is None:
+        escolhidas, dano_total, mana_total, dp = knapsack_01_acoes(
+            estado["acoes_disponiveis"],
+            MANA_DISPONIVEL,
+        )
+        estado["execucao"] = {
+            "escolhidas": escolhidas,
+            "dano_total": dano_total,
+            "dano_bruto": sum(acao.dano for acao in escolhidas),
+            "mana_total": mana_total,
+            "dp": dp,
+        }
+
+    return estado["execucao"]
+
+
+def executar_analise(estado):
+    limpar_tela()
+    execucao = obter_execucao(estado)
+    escolhidas = execucao["escolhidas"]
+
+    titulo("ANÁLISE COM 0/1 KNAPSACK")
+    exibir_objetivo_analise()
+    exibir_barras_analise()
+    print("\nA análise usa apenas os 5 golpes disponíveis nesta execução.")
+
+    exibir_tabela_acoes("Melhor combinação encontrada", escolhidas)
+    exibir_resumo_analise(execucao["mana_total"], execucao["dano_bruto"])
+
+    print("\nConclusão:")
+    print(
+        "Entre os golpes disponíveis nesta rodada, essa sequência é a que mais\n"
+        "causa dano dentro da mana atual do Cloud. Se o dano passar da vida de\n"
+        "Sephiroth, o excedente aparece apenas como overkill; a decisão ainda é\n"
+        "a melhor ofensiva segundo o critério definido para esta rodada."
+    )
+    pausar()
+    aplicar_resultado_no_combate(execucao)
+
+
+def aplicar_resultado_no_combate(execucao):
+    limpar_tela()
+    titulo("RETORNO AO COMBATE")
+
+    vida_sephiroth = VIDA_SEPHIROTH
+    mana_cloud = MANA_CLOUD
+
+    print("Status antes da sequência")
+    print("+-----------+-------------+------------+")
+    print("| Lutador   | Vida        | Mana       |")
+    print("+-----------+-------------+------------+")
+    print(f"| Cloud     | {f'{VIDA_CLOUD}/{VIDA_MAX_CLOUD}':<11} | {f'{mana_cloud}/{MANA_MAX_CLOUD}':<10} |")
+    print(f"| Sephiroth | {f'{vida_sephiroth}/{VIDA_MAX_SEPHIROTH}':<11} | {f'{MANA_SEPHIROTH}/{MANA_MAX_SEPHIROTH}':<10} |")
+    print("+-----------+-------------+------------+")
+    print("\nSequência aplicada")
+    print("+----------------------+--------------------------+------------+---------------+")
+    print("| Habilidade           | Efeito                   | Mana Cloud | Sephiroth HP  |")
+    print("+----------------------+--------------------------+------------+---------------+")
+
+    for acao in execucao["escolhidas"]:
+        mana_cloud = max(0, mana_cloud - acao.custo_mana)
+        vida_sephiroth = max(0, vida_sephiroth - acao.dano)
+        efeito = f"Causa {acao.dano} de dano."
+        print(
+            f"| {acao.nome[:20]:<20} | {efeito:<24} | "
+            f"{f'{mana_cloud}/{MANA_MAX_CLOUD}':<10} | {f'{vida_sephiroth}/{VIDA_MAX_SEPHIROTH}':<13} |"
+        )
+
+    print("+----------------------+--------------------------+------------+---------------+")
+
+    print("Sephiroth tenta avançar, mas a sequência encerra o confronto.")
+    print("O dano escolhido pela análise foi suficiente para zerar sua vida.")
+    print()
+    titulo("VITÓRIA")
+    print("Cloud vence este turno decisivo.")
+    print("A demonstração mostra o Knapsack otimizando dano sob limite de mana.")
     pausar()
 
 
 def exibir_menu():
     limpar_tela()
-    titulo("SALA DO TESOURO", "Escolha sua proxima acao")
-    print(r"        .-.")
-    print(r"       (o o)     O bau range. A mochila pesa no ombro.")
-    print(r"       | O \     O algoritmo aguarda sua ordem.")
-    print("        \\   \\")
-    print(r"         `~~~'")
+    titulo("MENU DO TURNO")
+    print("Cloud precisa encerrar a luta antes que Sephiroth ataque novamente.")
+    exibir_barras_de_status()
     print()
-    print("+----+----------------------------------------------+")
-    print("| 1  | Ver mochila                                  |")
-    print("| 2  | Ver itens do bau                             |")
-    print("| 3  | Recolher melhores itens usando Knapsack      |")
-    print("| 4  | Ver explicacao do algoritmo                  |")
-    print("| 5  | Ver tabela dinamica gerada pelo algoritmo    |")
-    print("| 6  | Sair                                         |")
-    print("+----+----------------------------------------------+")
-    return input("\n>> Escolha uma opcao: ").strip()
-
-
-def exibir_itens(titulo, itens):
-    print(f"\n{titulo}")
-    print("+" + "-" * 54 + "+")
-
-    if not itens:
-        print("| Nenhum item.".ljust(55) + "|")
-        print("+" + "-" * 54 + "+")
-        return
-
-    for indice, item in enumerate(itens, start=1):
-        conteudo = f"{indice:02d}. {item.nome:<24} peso {item.peso:>2}  valor {item.valor:>2}"
-        print("| " + conteudo[:52].ljust(52) + " |")
-    print("+" + "-" * 54 + "+")
-
-
-def ver_mochila(mochila):
-    limpar_tela()
-    peso_ocupado = sum(item.peso for item in mochila)
-    restante = CAPACIDADE_TOTAL - peso_ocupado
-
-    titulo("MOCHILA DO AVENTUREIRO", "Itens que ja ocupam espaco antes do bau")
-    desenhar_mapa(restante)
-    exibir_itens("Itens na mochila", mochila)
-    print("\nCapacidade")
-    print("  Ocupado :", barra_capacidade(peso_ocupado, CAPACIDADE_TOTAL))
-    print("  Livre   :", barra_capacidade(restante, CAPACIDADE_TOTAL))
-    pausar()
-
-
-def ver_bau(itens_bau):
-    limpar_tela()
-    titulo("BAU DA CRIPTA", "Itens candidatos para o 0/1 Knapsack")
-    print(r"          ______________________________")
-    print(r"         /______________________________\ ")
-    print(r"         |  $   ?   !   *   $   ?   !  |")
-    print(r"         |______________________________|")
-    exibir_itens("Itens no bau", itens_bau)
-    pausar()
-
-
-def recolher_melhores_itens(mochila, itens_bau, estado):
-    limpar_tela()
-    restante = capacidade_restante(mochila)
-    itens_candidatos = list(itens_bau)
-
-    titulo("OTIMIZACAO DO SAQUE", "O Knapsack avalia o bau sem remover itens antigos")
-    print(r"        [MOCHILA] ---- capacidade livre ----> [BAU]")
-    print(f"        {barra_capacidade(CAPACIDADE_TOTAL - restante, CAPACIDADE_TOTAL)}")
-    print(f"\nEspaco disponivel para o algoritmo: {restante}")
-
-    escolhidos, valor_total, peso_total, dp = knapsack_01(itens_candidatos, restante)
-    nomes_escolhidos = {item.nome for item in escolhidos}
-    deixados = [item for item in itens_bau if item.nome not in nomes_escolhidos]
-
-    mochila.extend(escolhidos)
-    itens_bau[:] = deixados
-    estado["ultima_execucao"] = {
-        "capacidade": restante,
-        "itens_candidatos": itens_candidatos,
-        "itens_escolhidos": escolhidos,
-        "valor_total": valor_total,
-        "peso_total": peso_total,
-        "dp": dp,
-    }
-
-    print("\nResultado")
-    print(linha("-"))
-    exibir_itens("Coletados", escolhidos)
-    exibir_itens("Deixados no bau", deixados)
-    print("\nResumo do saque")
-    print("+----------------------+------------------------------+")
-    print(f"| Peso usado no saque  | {peso_total:>2}/{restante:<25}|")
-    print(f"| Valor obtido         | {valor_total:<28}|")
-    print(f"| Mochila depois       | {barra_capacidade(sum(item.peso for item in mochila), CAPACIDADE_TOTAL, 18):<28}|")
-    print("+----------------------+------------------------------+")
-
-    if escolhidos:
-        print(
-            "\nA escolha foi feita por otimizacao: o algoritmo comparou combinacoes\n"
-            "possiveis, em vez de pegar apenas o item de maior valor individual."
-        )
-    else:
-        print("\nNenhum item coube na capacidade restante.")
-
-    pausar()
-
-
-def explicar_algoritmo():
-    limpar_tela()
-    titulo("COMO O FEITICO KNAPSACK PENSA", "Programacao dinamica em linguagem simples")
-    caixa(
-        "O problema da mochila pergunta quais itens devem ser levados quando\n"
-        "existe um limite de peso. Neste MUD, peso e o espaco que um item ocupa,\n"
-        "valor e o beneficio do item, e capacidade e o peso maximo que ainda cabe.\n\n"
-        "Nem todos os itens podem ser pegos porque a mochila ja tem objetos e o\n"
-        "espaco restante e limitado. Como cada item do bau so pode ser escolhido\n"
-        "uma vez, este e o problema 0/1 Knapsack.\n\n"
-        "A programacao dinamica monta uma tabela dp[i][c], onde i representa os\n"
-        "primeiros itens considerados e c representa uma capacidade possivel.\n"
-        "Para cada item, a tabela decide entre nao pegar o item ou pegar o item,\n"
-        "caso ele caiba. O maior valor entre essas duas escolhas fica gravado.\n\n"
-        "Complexidade: O(n * W), onde n e o numero de itens e W e a capacidade."
-    )
-    print("\nFormula da decisao")
-    print("+--------------------------------------------------------------+")
-    print("| se o item nao cabe: dp[i][c] = dp[i - 1][c]                  |")
-    print("| se cabe: max(nao pegar, valor do item + melhor resto)        |")
-    print("+--------------------------------------------------------------+")
-    pausar()
-
-
-def imprimir_tabela_dp(estado, mochila, itens_bau):
-    limpar_tela()
-    execucao = estado.get("ultima_execucao")
-
-    if execucao is None:
-        capacidade = capacidade_restante(mochila)
-        escolhidos, valor_total, peso_total, dp = knapsack_01(itens_bau, capacidade)
-        execucao = {
-            "capacidade": capacidade,
-            "itens_candidatos": list(itens_bau),
-            "itens_escolhidos": escolhidos,
-            "valor_total": valor_total,
-            "peso_total": peso_total,
-            "dp": dp,
-        }
-        estado["ultima_execucao"] = execucao
-
-    capacidade = execucao["capacidade"]
-    itens = execucao["itens_candidatos"]
-    dp = execucao["dp"]
-    escolhidos = execucao["itens_escolhidos"]
-    peso_total = execucao["peso_total"]
-    valor_total = execucao["valor_total"]
-
-    titulo("TABELA DINAMICA DP", "Cada linha considera mais um item do bau")
-    print("LEITURA GUIADA")
-    print("+--------------------------------------------------------------------------+")
-    print("| Cada numero responde: qual e o melhor VALOR que consigo carregar aqui?  |")
-    print("| Linhas = itens liberados para o algoritmo. Colunas = espaco disponivel. |")
-    print("| A matriz cresce da esquerda para a direita e de cima para baixo.         |")
-    print("+--------------------------------------------------------------------------+")
-    print(f"\nCapacidade usada pelo algoritmo: {capacidade}")
-    print("A celula final aparece marcada com < >.\n")
-
-    print("Capacidade ->".ljust(22) + "".join(str(c).rjust(5) for c in range(capacidade + 1)))
-    cabecalho = "Itens considerados".ljust(22) + "".join("|".rjust(5) for _ in range(capacidade + 1))
-    print(cabecalho)
-    print("-" * len(cabecalho))
-
-    for i, valores_linha in enumerate(dp):
-        nome = "nenhum item" if i == 0 else f"+ {itens[i - 1].nome}"[:21]
-        valores = []
-        for c, valor in enumerate(valores_linha):
-            if i == len(dp) - 1 and c == capacidade:
-                valores.append(f"<{valor}>".rjust(5))
-            else:
-                valores.append(str(valor).rjust(5))
-        print(nome.ljust(22) + "".join(valores))
-
-    print("\n" + linha("-"))
-    print("RESUMO DA MATRIZ")
-    print(f"Melhor valor final: dp[{len(itens)}][{capacidade}] = {dp[-1][-1]}")
-    print(f"Peso usado pela solucao: {peso_total}/{capacidade}")
-    print("Itens reconstruidos:", ", ".join(item.nome for item in escolhidos) or "nenhum")
-    print("\nCOMO INTERPRETAR A ULTIMA CELULA")
-    print(
-        f"O algoritmo olhou todos os {len(itens)} itens candidatos e todas as capacidades\n"
-        f"de 0 ate {capacidade}. O maior valor possivel sem passar do limite foi {valor_total}."
-    )
-
-    if escolhidos:
-        print("\nCaminho final escolhido:")
-        for item in escolhidos:
-            print(f"  -> {item.nome}: ocupa {item.peso}, soma valor {item.valor}")
-    else:
-        print("\nNenhum item foi escolhido porque nada coube na capacidade disponivel.")
-
-    pausar()
+    print("[1] Ver habilidades ofensivas")
+    print("[2] Executar análise com Knapsack")
+    print("[0] Sair")
+    return input("\n>> Escolha uma opção: ").strip()
 
 
 def main():
-    mochila, itens_bau = criar_estado_inicial()
-    estado = {"ultima_execucao": None}
-
+    catalogo_rodada, acoes_disponiveis = criar_acoes_da_rodada()
+    estado = {
+        "catalogo_rodada": catalogo_rodada,
+        "acoes_disponiveis": acoes_disponiveis,
+        "execucao": None,
+    }
     exibir_introducao()
 
     while True:
         opcao = exibir_menu()
 
         if opcao == "1":
-            ver_mochila(mochila)
+            exibir_acoes(estado["acoes_disponiveis"])
         elif opcao == "2":
-            ver_bau(itens_bau)
-        elif opcao == "3":
-            recolher_melhores_itens(mochila, itens_bau, estado)
-        elif opcao == "4":
-            explicar_algoritmo()
-        elif opcao == "5":
-            imprimir_tabela_dp(estado, mochila, itens_bau)
-        elif opcao == "6":
+            executar_analise(estado)
+        elif opcao == "0":
             limpar_tela()
-            titulo("FIM DA EXPEDICAO")
-            print(r"        __")
-            print(r"   ____/ /__  fim")
-            print(r"  / __  / _ \ ")
-            print(r" / /_/ /  __/")
-            print(r" \__,_/\___/ ")
-            print("\nVoce deixa a cripta com os itens escolhidos.")
+            titulo("FIM")
+            print("Cloud respira fundo. A decisão do turno foi compreendida.")
             break
         else:
             limpar_tela()
-            titulo("COMANDO DESCONHECIDO")
-            print(r"        ???")
-            print(r"       (o_o)   A cripta nao entendeu sua ordem.")
-            print("\nOpcao invalida.")
+            print("\nOpção inválida.")
             pausar()
 
 
